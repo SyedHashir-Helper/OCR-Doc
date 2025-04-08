@@ -1,26 +1,44 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { 
-  Table, 
-  Card, 
-  Button, 
-  Modal, 
-  Form, 
-  Select, 
-  DatePicker, 
-  Input,
-  Tag 
+  Table, Card, Button, Modal, Form, Select, DatePicker, Input, Tag 
 } from 'antd';
-import { 
-  FilterOutlined, 
-  FileSearchOutlined, 
-  DownloadOutlined 
-} from '@ant-design/icons';
+import { FilterOutlined, FileSearchOutlined, DownloadOutlined } from '@ant-design/icons';
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 
 const ProcessedDocuments = () => {
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [documents, setDocuments] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/processed-documents');
+      const rawData = response.data.processed_documents;
+
+    const transformedData = rawData.map((doc, index) => ({
+      key: doc[0], // id
+      documentId: doc[1],
+      fileName: doc[2],
+      type: doc[3],
+      processedDate: doc[4],
+      batchId: doc[5],
+      status: doc[6],
+    }));
+
+    setDocuments(transformedData);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDocuments();
+  }, []);
 
   const columns = [
     {
@@ -62,7 +80,7 @@ const ProcessedDocuments = () => {
         const color = {
           'Processed': 'green',
           'Verified': 'blue'
-        }[status];
+        }[status] || 'default';
         return <Tag color={color}>{status}</Tag>;
       }
     },
@@ -91,50 +109,6 @@ const ProcessedDocuments = () => {
     }
   ];
 
-  const mockProcessedDocuments = [
-    {
-      key: '1',
-      documentId: 'DOC-2025-0001',
-      fileName: 'insurance_claim_001.pdf',
-      type: 'Claim',
-      processedDate: '2025-01-15',
-      batchId: 'B-2025-0142',
-      status: 'Processed'
-    },
-    {
-      key: '2',
-      documentId: 'DOC-2025-0002',
-      fileName: 'agency_document_002.docx',
-      type: 'Agency',
-      processedDate: '2025-01-10',
-      batchId: 'B-2025-0141',
-      status: 'Verified'
-    },
-    {
-      key: '3',
-      documentId: 'DOC-2025-0003',
-      fileName: 'mortgage_form_003.pdf',
-      type: 'Mortgage',
-      processedDate: '2025-01-08',
-      batchId: 'B-2025-0140',
-      status: 'Processed'
-    },
-    {
-      key: '4',
-      documentId: 'DOC-2025-0004',
-      fileName: 'cancellation_request_004.pdf',
-      type: 'Claim',
-      processedDate: '2025-01-05',
-      batchId: 'B-2025-0139',
-      status: 'Verified'
-    }
-  ];
-
-  const handleFilterSubmit = (values) => {
-    console.log('Filter values:', values);
-    setIsFilterModalVisible(false);
-  };
-
   const handleViewDocument = (document) => {
     Modal.info({
       title: `Document Details: ${document.documentId}`,
@@ -151,6 +125,12 @@ const ProcessedDocuments = () => {
     });
   };
 
+  const handleFilterSubmit = (values) => {
+    console.log('Filter values:', values);
+    setIsFilterModalVisible(false);
+    // You can call fetchDocuments() with query params if backend supports
+  };
+
   return (
     <Card 
       title="Processed Documents" 
@@ -165,7 +145,8 @@ const ProcessedDocuments = () => {
     >
       <Table 
         columns={columns} 
-        dataSource={mockProcessedDocuments}
+        dataSource={documents}
+        loading={loading}
         pagination={{ pageSize: 5 }}
       />
 

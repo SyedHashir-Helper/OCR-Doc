@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Table, 
   Card, 
@@ -8,8 +8,11 @@ import {
   Select, 
   DatePicker, 
   Space,
-  Tag 
+  Tag,
+  Spin,
+  message
 } from 'antd';
+import axios from 'axios';
 import { 
   FilterOutlined, 
   EyeOutlined, 
@@ -21,6 +24,32 @@ const { RangePicker } = DatePicker;
 
 const BatchManagement = () => {
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchBatches = async () => {
+    try {
+      const response = await axios.get('http://localhost:3000/api/batches');
+      const data = response.data.batches.map((item, index) => ({
+        key: item[0],
+        batchId: item[1],
+        date: new Date(item[2]).toLocaleDateString(),  // Format as needed
+        totalDocuments: item[3],
+        exceptions: item[4],
+        status: item[4] > 0 ? 'Exceptions' : 'Complete' // You can adjust logic here
+      }));
+      setBatches(data);
+    } catch (err) {
+      console.error(err);
+      message.error("Failed to load batches");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBatches();
+  }, []);
 
   const columns = [
     {
@@ -34,33 +63,9 @@ const BatchManagement = () => {
       key: 'totalDocuments',
     },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => {
-        const color = {
-          'Complete': 'green',
-          'Processing': 'orange',
-          'Exceptions': 'red'
-        }[status];
-        return <Tag color={color}>{status}</Tag>;
-      },
-      filters: [
-        { text: 'Complete', value: 'Complete' },
-        { text: 'Processing', value: 'Processing' },
-        { text: 'Exceptions', value: 'Exceptions' },
-      ],
-      onFilter: (value, record) => record.status === value,
-    },
-    {
-      title: 'Start Date',
-      dataIndex: 'startDate',
-      key: 'startDate',
-    },
-    {
-      title: 'End Date',
-      dataIndex: 'endDate',
-      key: 'endDate',
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
     },
     {
       title: 'Exceptions',
@@ -94,45 +99,6 @@ const BatchManagement = () => {
     }
   ];
 
-  const mockBatches = [
-    {
-      key: '1',
-      batchId: 'B-2025-0142',
-      totalDocuments: 32,
-      status: 'Complete',
-      startDate: '2025-01-15',
-      endDate: '2025-01-16',
-      exceptions: 0
-    },
-    {
-      key: '2',
-      batchId: 'B-2025-0141',
-      totalDocuments: 18,
-      status: 'Exceptions',
-      startDate: '2025-01-10',
-      endDate: '2025-01-12',
-      exceptions: 4
-    },
-    {
-      key: '3',
-      batchId: 'B-2025-0140',
-      totalDocuments: 45,
-      status: 'Processing',
-      startDate: '2025-01-08',
-      endDate: '-',
-      exceptions: 0
-    },
-    {
-      key: '4',
-      batchId: 'B-2025-0139',
-      totalDocuments: 29,
-      status: 'Complete',
-      startDate: '2025-01-05',
-      endDate: '2025-01-06',
-      exceptions: 2
-    }
-  ];
-
   const handleFilterSubmit = (values) => {
     console.log('Filter values:', values);
     setIsFilterModalVisible(false);
@@ -145,8 +111,7 @@ const BatchManagement = () => {
         <div>
           <p>Total Documents: {batch.totalDocuments}</p>
           <p>Status: {batch.status}</p>
-          <p>Start Date: {batch.startDate}</p>
-          <p>End Date: {batch.endDate}</p>
+          <p>Date: {batch.date}</p>
           <p>Exceptions: {batch.exceptions}</p>
         </div>
       ),
@@ -166,15 +131,19 @@ const BatchManagement = () => {
         </Button>
       }
     >
-      <Table 
-        columns={columns} 
-        dataSource={mockBatches}
-        pagination={{ pageSize: 5 }}
-      />
+      {loading ? (
+        <Spin />
+      ) : (
+        <Table 
+          columns={columns} 
+          dataSource={batches}
+          pagination={{ pageSize: 5 }}
+        />
+      )}
 
       <Modal
         title="Filter Batches"
-        visible={isFilterModalVisible}
+        open={isFilterModalVisible}
         onCancel={() => setIsFilterModalVisible(false)}
         footer={null}
       >
